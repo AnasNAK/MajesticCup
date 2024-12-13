@@ -1,0 +1,48 @@
+services:
+
+  mongodb:
+    image: mongodb/mongodb-community-server:6.0-ubi8
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - "MONGODB_INITDB_ROOT_USERNAME=root"
+      - "MONGODB_INITDB_ROOT_PASSWORD=password"
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.runCommand('ping').ok == 1" ]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 10s
+    volumes:
+      - db:/data/db
+    networks:
+      - net
+
+
+  app:
+    container_name: majestic
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: majestic
+    ports:
+      - $LOCAL_PORT:$DOCKER_PORT
+    restart: on-failure
+    command: '/bin/bash -c "sleep 5; mongosh $$CONN_STR --eval \"show dbs;\""'
+    depends_on:
+      - mongodb
+    links:
+      - mongodb
+    networks:
+      - net
+
+
+networks:
+  net:
+    driver: bridge
+
+volumes:
+  db:
+    driver:
+      local
